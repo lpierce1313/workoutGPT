@@ -1,101 +1,294 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useCallback, useEffect, useState } from 'react';
+import { Box, Button, FormControl, InputLabel, ListItemIcon, ListItemText, MenuItem, Select, Slider, Typography, SelectChangeEvent, Card, CardContent, Checkbox, FormControlLabel, FormGroup, TextField, Alert, Snackbar, CircularProgress } from '@mui/material';
+import Grid from '@mui/material/Grid2';
+import { WorkoutResponse } from '@/app/api/generateWorkout/route';
+import { VscDash } from "react-icons/vsc";
+import { FaCheck, FaClock, FaDumbbell, FaHeartbeat, FaWeightHanging } from 'react-icons/fa';
+import { useTheme } from '@/context/ThemeContext';
+import isEqual from 'lodash/isEqual';
+
+const muscleGroupsOptions = ['Back', 'Chest', 'Shoulders', 'Triceps', 'Biceps', 'Abs', 'Legs', 'Lungs i.e. Cardio only'];
+
+const DEFAULT_FORM = {
+  muscleGroups: [] as string[],
+  intensity: 7,
+  bodyweight: false,
+  workoutStyle: 'crossfit',
+  duration: 5,
+  additionalInfo: '',
+};
+
+const DEFAULT_WORKOUT_NAME = 'My Routine';
+
+const WorkoutForm: React.FC = () => {
+  const { theme } = useTheme();
+  const [workoutState, setWorkoutState] = useState<typeof DEFAULT_FORM>(DEFAULT_FORM);
+  const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
+  const [routineName, setRoutineName] = useState(DEFAULT_WORKOUT_NAME);
+  const [hasChanged, setHasChanged] = useState(false);
+  const [showSnackbar, setShowSnackbar] = useState(false);
+  const [workoutResponse, setWorkoutResponse] = useState<WorkoutResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  const handleReset = useCallback(() => {
+    setWorkoutState(DEFAULT_FORM);
+    setShowAdditionalInfo(false);
+    setRoutineName(DEFAULT_WORKOUT_NAME);
+    setWorkoutResponse(null);
+  }, []);
+
+  const handleMuscleGroupsChange = useCallback((event: SelectChangeEvent<string[]>) => {
+    setWorkoutState((prevState) => ({
+      ...prevState,
+      muscleGroups: event.target.value as string[],
+    }));
+  }, []);
+
+  const handleChange = useCallback((field: string, value: unknown) => {
+    setWorkoutState((prevState) => ({
+      ...prevState,
+      [field]: value,
+    }));
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/generateWorkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(workoutState),
+      });
+      const data = await response.json();
+      setWorkoutResponse(data);
+    } catch (error) {
+      console.error('Error generating workout plan:', error);
+      setHasError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [workoutState]);
+
+  const handleSubmitClick = useCallback(() => {
+    if(loading) {
+      return;
+    }
+    if(!hasChanged) {
+      setShowSnackbar(true);
+    } else {
+      handleSubmit();
+    }
+  }, [handleSubmit, hasChanged, loading]);
+
+  const getCurrentStatus = useCallback(() => {
+    if(loading) {
+      return 'loading';
+    } else if(hasError) {
+      return 'error';
+    } else if(workoutResponse) {
+      return 'workout';
+    } else if (hasChanged) {
+      return 'summary';
+    } else {
+      return;
+    }
+  }, [hasChanged, hasError, loading, workoutResponse]);
+
+  useEffect(() => {
+    if(!isEqual(workoutState, DEFAULT_FORM)) {
+      setHasChanged(true);
+    } else {
+      setHasChanged(false);
+    }
+  }, [workoutState]);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
+      <Typography variant="h6" gutterBottom>
+        Create Your Workout Plan
+      </Typography>
+      <FormControl fullWidth margin="normal">
+        <TextField
+          value={routineName}
+          onChange={(e) => setRoutineName(e.target.value)}
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      </FormControl>
+      <FormControl fullWidth margin="normal">
+        <InputLabel>Muscle Groups</InputLabel>
+        <Select
+          multiple
+          value={workoutState.muscleGroups}
+          onChange={handleMuscleGroupsChange}
+          renderValue={(selected) => (selected as string[]).join(', ')}
+        >
+          {muscleGroupsOptions.map((group) => (
+            <MenuItem key={group} value={group}>
+              <ListItemText primary={group} />
+              {workoutState.muscleGroups.indexOf(group) > -1 && (
+                <ListItemIcon>
+                  <FaCheck style={{ color: theme === 'dark' ? 'lightgreen' : 'green' }} />
+                </ListItemIcon>
+              )}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl fullWidth margin="normal">
+        <Typography gutterBottom>Intensity</Typography>
+        <Slider
+          value={workoutState.intensity}
+          onChange={(_event, newValue) => handleChange('intensity', newValue)}
+          aria-labelledby="intensity-slider"
+          valueLabelDisplay="auto"
+          step={1}
+          marks
+          min={1}
+          max={10}
+        />
+      </FormControl>
+      <FormControl fullWidth margin="normal">
+        <Typography gutterBottom>Duration (minutes)</Typography>
+        <Slider
+          value={workoutState.duration}
+          onChange={(_event, newValue) => handleChange('duration', newValue)}
+          aria-labelledby="duration-slider"
+          valueLabelDisplay="auto"
+          step={1}
+          min={1}
+          max={90}
+        />
+      </FormControl>
+      <FormGroup>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 6 }}>
+          <FormControlLabel
+            control={<Checkbox checked={workoutState.bodyweight} onChange={(e) => handleChange('bodyweight', e.target.checked)} />}
+            label="Strictly Bodyweight"
+          />
+        </Grid>
+        <Grid size={{ xs: 6 }}>
+          <FormControlLabel
+            control={<Checkbox checked={showAdditionalInfo} onChange={(e) => setShowAdditionalInfo(e.target.checked)} />}
+            label="Additional Info"
+          />
+        </Grid>
+      </Grid>
+      </FormGroup>
+      {showAdditionalInfo && (
+        <FormControl fullWidth margin="normal">
+          <TextField
+            label="Additional Info"
+            multiline
+            rows={4}
+            value={workoutState.additionalInfo}
+            onChange={(e) => handleChange('additionalInfo', e.target.value)}
+            inputProps={{ maxLength: 250 }}
+            helperText={`${workoutState.additionalInfo.length}/250`}
+          />
+        </FormControl>
+      )}
+      <Box display="flex" justifyContent="space-between" sx={{ mt: 2 }}>
+        <Button
+          type="button" variant="contained" color="primary" disabled={!hasChanged} onClick={handleSubmitClick}
+        >
+          {loading ? 'Generating...' : 'Generate Workout'}
+        </Button>
+        <Button type="button" variant="outlined" color="primary" onClick={handleReset}>
+          Reset
+        </Button>
+      </Box>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      {/* LOADING */}
+      {getCurrentStatus() === 'loading' && (
+        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress size={50}/>
+        </Box>
+      )}
+
+      {/* ERROR */}
+      {getCurrentStatus() === 'error' && (
+        <Box sx={{ mt: 4 }}>
+          <Alert severity="error">Error generating workout plan. Please try again.</Alert>
+        </Box>
+      )}
+
+      {/* Workout Plan */}
+      {getCurrentStatus() === 'workout' && workoutResponse && (
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            {routineName}
+          </Typography>
+          <Card>
+            <CardContent>
+              <Grid container spacing={2}>
+                {workoutResponse.circuit.map((exercise, index) => (
+                  <Grid size={{ xs: 12 }} key={index}>
+                    <Box display="flex" alignItems="center">
+                      <VscDash style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
+                      <Typography>{exercise.exercise} - {exercise.reps} reps</Typography>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+
+      {/* Summary */}
+      {getCurrentStatus() === 'summary' &&(
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Summary
+          </Typography>
+          <Card>
+            <CardContent>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12 }}>
+                  <Box display="flex" alignItems="center">
+                    <FaDumbbell style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
+                    <Typography>Muscle Groups: {workoutState.muscleGroups.join(', ') || 'None selected'}</Typography>
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Box display="flex" alignItems="center">
+                    <FaHeartbeat style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
+                    <Typography>Intensity: {workoutState.intensity}</Typography>
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Box display="flex" alignItems="center">
+                    <FaWeightHanging style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
+                    <Typography>Bodyweight: {workoutState.bodyweight ? 'Yes' : 'No'}</Typography>
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Box display="flex" alignItems="center">
+                    <FaClock style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
+                    <Typography>Duration: {workoutState.duration} minutes</Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+      <Snackbar
+        open={showSnackbar}
+        autoHideDuration={6000}
+        onClose={() => setShowSnackbar(false)}
+      >
+        <Alert onClose={() => setShowSnackbar(false)} severity="warning" sx={{ width: '100%' }}>
+          Please add a routine name before submitting.
+        </Alert>
+      </Snackbar>
+    </Box>
   );
-}
+};
+
+export default WorkoutForm;
