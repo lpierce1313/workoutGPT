@@ -11,7 +11,7 @@ export interface WorkoutRequest {
   bodyweight: boolean;
   duration: number;
   additionalInfo?: string;
-  rest?: number;
+  rest?: boolean;
   workoutStyle?: string;
 }
 
@@ -19,9 +19,8 @@ export interface WorkoutResponse {
   circuit: {
     exercise: string;
     reps: number;
-    rest?: number;
   }[];
-  duration: number;
+  restAmount?: number;
 }
 
 
@@ -50,12 +49,12 @@ const generateWorkoutPlan = async (
 
   const prompt = `Generate a ${workoutStyle} style workout plan in JSON format for the following parameters:
     Muscle Groups: ${muscleGroups.join(", ")}
-    Intensity: ${intensity}
+    Intensity Level: ${intensity}
     Bodyweight Only: ${bodyweight ? "Yes" : "No"}
     Duration: ${duration} minutes
-    rest: ${rest ? rest + 'in seconds' : 'none it is a circuit'}
+    rest: ${rest ? rest + 'in seconds between in 15 sec increments and base on intensity level' : 'none it is a circuit'}
     maximum of 8 exercises per circuit but can be less
-    additional info provided: ${additionalInfo}
+    additional info: ${additionalInfo}
 
     The response should be a JSON object with the following structure:
     {
@@ -63,9 +62,9 @@ const generateWorkoutPlan = async (
         {
           "exercise": "string",
           "reps": number,
-          "rest"?: number
         }
-      ]
+      ],
+        restAmount?: number;
   }`;
 
   try {

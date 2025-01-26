@@ -9,12 +9,13 @@ import { FaCheck, FaClock, FaDumbbell, FaHeartbeat, FaWeightHanging } from 'reac
 import { useTheme } from '@/context/ThemeContext';
 import isEqual from 'lodash/isEqual';
 
-const muscleGroupsOptions = ['Back', 'Chest', 'Shoulders', 'Triceps', 'Biceps', 'Abs', 'Legs', 'Lungs i.e. Cardio only'];
+const muscleGroupsOptions = ['Back', 'Chest', 'Shoulders', 'Triceps', 'Biceps', 'Abs', 'Legs', 'Cardio'];
 
 const DEFAULT_FORM = {
   muscleGroups: [] as string[],
   intensity: 7,
   bodyweight: false,
+  rest: false,
   workoutStyle: 'crossfit',
   duration: 5,
   additionalInfo: '',
@@ -109,16 +110,17 @@ const WorkoutForm: React.FC = () => {
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h6">
         Create Your Workout Plan
       </Typography>
-      <FormControl fullWidth margin="normal">
+      <FormControl fullWidth margin="dense">
         <TextField
           value={routineName}
+          size='small'
           onChange={(e) => setRoutineName(e.target.value)}
         />
       </FormControl>
-      <FormControl fullWidth margin="normal">
+      <FormControl fullWidth margin="dense" size="small">
         <InputLabel>Muscle Groups</InputLabel>
         <Select
           multiple
@@ -151,7 +153,7 @@ const WorkoutForm: React.FC = () => {
           max={10}
         />
       </FormControl>
-      <FormControl fullWidth margin="normal">
+      {/* <FormControl fullWidth margin="normal">
         <Typography gutterBottom>Duration (minutes)</Typography>
         <Slider
           value={workoutState.duration}
@@ -162,19 +164,25 @@ const WorkoutForm: React.FC = () => {
           min={1}
           max={90}
         />
-      </FormControl>
+      </FormControl> */}
       <FormGroup>
       <Grid container spacing={2}>
-        <Grid size={{ xs: 6 }}>
+        <Grid size={{ xs: 4 }}>
           <FormControlLabel
             control={<Checkbox checked={workoutState.bodyweight} onChange={(e) => handleChange('bodyweight', e.target.checked)} />}
             label="Strictly Bodyweight"
           />
         </Grid>
-        <Grid size={{ xs: 6 }}>
+        <Grid size={{ xs: 4 }}>
+          <FormControlLabel
+            control={<Checkbox checked={workoutState.rest} onChange={(e) => handleChange('rest', e.target.checked)} />}
+            label="Rest During Sets?"
+          />
+        </Grid>
+        <Grid size={{ xs: 4 }}>
           <FormControlLabel
             control={<Checkbox checked={showAdditionalInfo} onChange={(e) => setShowAdditionalInfo(e.target.checked)} />}
-            label="Additional Info"
+            label="Add Custom Info"
           />
         </Grid>
       </Grid>
@@ -187,7 +195,7 @@ const WorkoutForm: React.FC = () => {
             rows={4}
             value={workoutState.additionalInfo}
             onChange={(e) => handleChange('additionalInfo', e.target.value)}
-            inputProps={{ maxLength: 250 }}
+            inputProps={{ maxLength: 50 }}
             helperText={`${workoutState.additionalInfo.length}/250`}
           />
         </FormControl>
@@ -226,6 +234,13 @@ const WorkoutForm: React.FC = () => {
           <Card>
             <CardContent>
               <Grid container spacing={2}>
+                {workoutResponse.restAmount && (
+                  <Grid size={{ xs: 12 }}>
+                    <Box display="flex" alignItems="center">
+                      <Typography>Rest Between Sets: {workoutResponse.restAmount} seconds</Typography>
+                    </Box>
+                  </Grid>
+                )}
                 {workoutResponse.circuit.map((exercise, index) => (
                   <Grid size={{ xs: 12 }} key={index}>
                     <Box display="flex" alignItems="center">
