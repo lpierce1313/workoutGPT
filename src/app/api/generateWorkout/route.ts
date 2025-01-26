@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 }
 }
 
-export const generateWorkoutPlan = async (
+const generateWorkoutPlan = async (
   workoutRequest: WorkoutRequest
 ): Promise<WorkoutResponse> => {
   const {
