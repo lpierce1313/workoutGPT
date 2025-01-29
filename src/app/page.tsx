@@ -168,7 +168,7 @@ const WorkoutForm: React.FC = () => {
         />
       </FormControl> */}
       <FormGroup>
-      <Grid container spacing={2}>
+      <Grid container spacing={2} justifyContent="space-between" alignItems="center">
         <Grid size={{ xs: 4 }}>
           <FormControlLabel
             control={<Checkbox checked={workoutState.bodyweight} onChange={(e) => handleChange('bodyweight', e.target.checked)} />}
