@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from 'next/server';
+import { z } from "zod";
+import { zodResponseFormat } from "openai/helpers/zod";
 
 const openAIClient = new OpenAI({
   apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY
@@ -55,37 +57,34 @@ const generateWorkoutPlan = async (
     rest: ${rest ? rest + 'in seconds between in 15 sec increments and base on intensity level' : 'none it is a circuit'}
     maximum of 8 exercises per circuit but can be less
     additional info: ${additionalInfo}
-
-    The response should be a JSON object with the following structure:
-    {
-      "circuit": [
-        {
-          "exercise": "string",
-          "reps": number,
-        }
-      ],
-        restAmount?: number;
   }`;
 
+  const WorkoutRoutine = z.object({
+    circuit: z.array(
+      z.object({
+        exercise: z.string(),
+        reps: z.number(),
+      })
+    ),
+    restAmount: z.number().optional(),
+  });
+
   try {
-    const completion = await openAIClient.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
+    const completion = await openAIClient.beta.chat.completions.parse({
+      messages: [
+        { role: "system", content: "You are a fitness trainer supplying a workout based on a prompt." },
+        { role: "user", content: prompt },
+      ],
+      response_format: zodResponseFormat(WorkoutRoutine, "workout_routine"),
       model: "gpt-4o-mini",
       max_tokens: 500,
     });
-    const content = completion.choices[0].message.content;
-    if (content) {
-      // Extract JSON part from the response
-      const jsonMatch = content.match(/```json([\s\S]*?)```/);
-      if (jsonMatch && jsonMatch[1]) {
-        const workoutPlan = JSON.parse(jsonMatch[1].trim());
-        return workoutPlan;
-      } else {
-        throw new Error('No JSON content found in the response');
-      }
-    } else {
-      throw new Error('No content returned from OpenAI');
+    const workout_routine = completion.choices[0].message.parsed;
+    console.log("Workout Routine:", workout_routine);
+    if (!workout_routine) {
+      throw new Error("Failed to generate workout routine");
     }
+    return workout_routine;
   } catch (error) {
     console.error("Error generating workout plan:", error);
     throw error;

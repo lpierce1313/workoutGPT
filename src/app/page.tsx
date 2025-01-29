@@ -33,6 +33,7 @@ const WorkoutForm: React.FC = () => {
   const [workoutResponse, setWorkoutResponse] = useState<WorkoutResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleReset = useCallback(() => {
     setWorkoutState(DEFAULT_FORM);
@@ -69,6 +70,7 @@ const WorkoutForm: React.FC = () => {
       setWorkoutResponse(data);
     } catch (error) {
       console.error('Error generating workout plan:', error);
+      setError((error as unknown as { message: string }).message);
       setHasError(true);
     } finally {
       setLoading(false);
@@ -219,9 +221,9 @@ const WorkoutForm: React.FC = () => {
       )}
 
       {/* ERROR */}
-      {getCurrentStatus() === 'error' && (
+      {getCurrentStatus() === 'error' && error && (
         <Box sx={{ mt: 4 }}>
-          <Alert severity="error">Error generating workout plan. Please try again.</Alert>
+          <Alert severity="error">Error generating workout plan: {error}</Alert>
         </Box>
       )}
 
@@ -234,7 +236,7 @@ const WorkoutForm: React.FC = () => {
           <Card>
             <CardContent>
               <Grid container spacing={2}>
-                {workoutResponse.restAmount && (
+                {workoutResponse.restAmount !== 0 && (
                   <Grid size={{ xs: 12 }}>
                     <Box display="flex" alignItems="center">
                       <Typography>Rest Between Sets: {workoutResponse.restAmount} seconds</Typography>
