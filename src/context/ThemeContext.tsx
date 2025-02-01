@@ -43,6 +43,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     secondary: {
       main: '#1976d2', // Example secondary color for light theme
     },
+    action: {
+      selected: 'rgba(0, 0, 0, 0.1)', // Selected color for light theme
+    },
   } as const;
 
   const DARK = {
@@ -55,6 +58,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
     secondary: {
       main: '#bb86fc',
+    },
+    action: {
+      selected: 'rgba(255, 255, 255, 0.2)', // Selected color for dark theme
     },
   } as const;
 
