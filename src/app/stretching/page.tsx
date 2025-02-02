@@ -49,14 +49,7 @@ const WorkoutForm: React.FC = () => {
     setStretchWorkout(DEFAULT_STRETCHING);
   }, []);
   
-  const handleArrayFieldChange = useCallback((field: keyof typeof stretchWorkout) => (event: SelectChangeEvent<string[]>) => {
-    setStretchWorkout((prevState) => ({
-      ...prevState,
-      [field]: event.target.value as string[],
-    }));
-  }, []);
-
-  const handleArraySingleFieldChange = useCallback((field: keyof typeof stretchWorkout) => (event: SelectChangeEvent<string>) => {
+  const handleArrayFieldChange = useCallback((field: keyof typeof stretchWorkout) => (event: SelectChangeEvent<string[] | string>) => {
     setStretchWorkout((prevState) => ({
       ...prevState,
       [field]: event.target.value,
@@ -145,7 +138,7 @@ const WorkoutForm: React.FC = () => {
         <InputLabel>Stretch Style</InputLabel>
         <Select
           value={stretchWorkout.stretchType}
-          onChange={handleArraySingleFieldChange('stretchType')}
+          onChange={handleArrayFieldChange('stretchType')}
           renderValue={(selected) => selected}>
           {stretchTypes.map((stretch) => (
             <MenuItem key={stretch} value={stretch}>

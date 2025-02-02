@@ -3,15 +3,6 @@ import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
 import openAIClient from '@/lib/AIClient';
 
-export interface SwimRequest {
-  swimStrokes: string[];
-  swimStyles: string[];
-  intensity: number;
-  duration: number;
-  additionalInfo?: string;
-  injuries?: string;
-}
-
 export interface SwimSegment {
   swimOption: string;
   sets: number;
@@ -20,7 +11,16 @@ export interface SwimSegment {
   restDuration: number;
 }
 
-export interface SwimResponse {
+export interface WorkoutRequest {
+  swimStrokes: string[];
+  swimStyle: string;
+  intensity: number;
+  duration: number;
+  additionalInfo?: string;
+  injuries?: string;
+}
+
+export interface WorkoutResponse {
   warmup: SwimSegment[];
   main: SwimSegment[];
   cooldown: SwimSegment[];
@@ -30,30 +30,30 @@ export interface SwimResponse {
 }
 
 export async function POST(req: Request) {
-  const swimRequest: SwimRequest = await req.json();
+  const workoutReq: WorkoutRequest = await req.json();
   try {
-    const workoutPlan = await generateSwimWorkout(swimRequest);
+    const workoutPlan = await generateWorkout(workoutReq);
     return NextResponse.json(workoutPlan);
   } catch (error) {
     console.error("Error generating workout plan:", error);
 }
 }
 
-const generateSwimWorkout = async (
-  swimRequest: SwimRequest
-): Promise<SwimResponse> => {
+const generateWorkout = async (
+  workoutRequest: WorkoutRequest
+): Promise<WorkoutResponse> => {
   const {
     swimStrokes,
-    swimStyles,
+    swimStyle,
     intensity,
     duration,
     additionalInfo,
     injuries,
-  } = swimRequest;
+  } = workoutRequest;
 
   const prompt = `Generate a swim workout plan with the following parameters:
     Swim strokes: ${swimStrokes.length > 0 ? swimStrokes.join(", ") : 'any'}
-    Swim styles: ${swimStyles.length > 0 ? swimStyles.join(", ") : 'any'}
+    Swim style: ${swimStyle} : 'any'}
     Intensity: ${intensity}
     Duration: ${duration} minutes
     Additional info: ${additionalInfo ? additionalInfo : 'none'}
@@ -78,7 +78,7 @@ const generateSwimWorkout = async (
     restDuration: z.number(), // Rest duration in seconds
   });
   
-  const SwimRoutine = z.object({
+  const Routine = z.object({
     warmup: z.array(SwimSegment),
     main: z.array(SwimSegment),
     cooldown: z.array(SwimSegment),
@@ -93,16 +93,15 @@ const generateSwimWorkout = async (
         { role: "system", content: "You are a swim coach supplying a swim routine based on a prompt." },
         { role: "user", content: prompt },
       ],
-      response_format: zodResponseFormat(SwimRoutine, "swim_routine"),
+      response_format: zodResponseFormat(Routine, "routine"),
       model: "gpt-4o-mini",
       max_tokens: 500,
     });
-    const swim_routine = completion.choices[0].message.parsed;
-    console.log("Swim Routine:", swim_routine);
-    if (!swim_routine) {
+    const routine = completion.choices[0].message.parsed;
+    if (!routine) {
       throw new Error("Failed to generate workout routine");
     }
-    return swim_routine;
+    return routine;
   } catch (error) {
     console.error("Error generating workout plan:", error);
     throw error;

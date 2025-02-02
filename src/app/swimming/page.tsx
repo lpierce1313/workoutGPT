@@ -1,43 +1,41 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Box, Button, FormControl, InputLabel, ListItemIcon, ListItemText, MenuItem, Select, Slider, Typography, SelectChangeEvent, Card, CardContent, Checkbox, FormControlLabel, FormGroup, TextField, Alert, Snackbar, CircularProgress } from '@mui/material';
+import { Box, Button, FormControl, ListItemIcon, ListItemText, MenuItem, Select, Slider, Typography, SelectChangeEvent, Card, CardContent, Checkbox, FormControlLabel, FormGroup, TextField, Alert, Snackbar, CircularProgress } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import { VscDash } from "react-icons/vsc";
 import { FaCheck, FaClock, FaDumbbell, FaHeartbeat } from 'react-icons/fa';
 import { useTheme } from '@/context/ThemeContext';
 import isEqual from 'lodash/isEqual';
-import { SwimResponse, SwimSegment } from '@/app/api/generateSwim/route';
+import { SwimSegment, WorkoutResponse } from '@/app/api/generateSwim/route';
 import { Divider } from '@mui/material';
 
 const swimStrokes = ['Freestyle', 'Backstroke', 'Breaststroke', 'Butterfly'];
-const swimStyles = ['Sprint', 'Distance', 'Interval'];
+const swimStyles = ['Distance', 'Sprint', 'Interval'];
 
-const DEFAULT_SWIM = {
+const DEFAULT_WORKOUT = {
   swimStrokes: [] as string[],
-  swimStyles: [] as string[],
+  swimStyle: swimStyles[0],
   intensity: 7,
   duration: 5,
   additionalInfo: '',
   injuries: '',
 };
 
-const DEFAULT_SWIM_NAME = 'My Swim';
+const DEFAULT_WORKOUT_NAME = 'My Workout';
 
-const SwimSegmentList = ({ swim, index }: { swim: SwimSegment; index: number}) => {
+const SwimSegmentList = ({ swim, index }: { swim: SwimSegment; index: number }) => {
   return (
-    <>
-      <Grid size={{ xs: 12 }} key={index}>
-        <Box display="flex" flexDirection="column" alignItems="flex-start">
-          <Box display="flex" alignItems="center">
-            <VscDash style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-            <Typography>
-              {swim.sets} x {swim.length} {swim.swimOption} - {swim.description} {swim.restDuration > 0 && (<>Take {swim.restDuration} seconds per set</>)}
-            </Typography>
-          </Box>
+    <Grid size={{ xs: 12 }} key={index + swim.description}>
+      <Box display="flex" flexDirection="column" alignItems="flex-start">
+        <Box display="flex" alignItems="flex-start">
+          <VscDash style={{ marginRight: 8, fontSize: 24, flexShrink: 0, alignSelf: 'flex-start' }} />
+          <Typography variant="body1">
+            {swim.sets} x {swim.length} {swim.swimOption} - {swim.description} {swim.restDuration > 0 && (<>Take {swim.restDuration} seconds per set</>)}
+          </Typography>
         </Box>
-      </Grid>
-    </>
+      </Box>
+    </Grid>
   );
 };
 
@@ -47,7 +45,7 @@ const WorkoutForm: React.FC = () => {
   const { theme } = useTheme();
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [showAnyInjuries, setShowAnyInjuries] = useState(false);
-  const [routineName, setRoutineName] = useState(DEFAULT_SWIM_NAME);
+  const [workoutName, setWorkoutName] = useState(DEFAULT_WORKOUT_NAME);
   const [hasChanged, setHasChanged] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -55,27 +53,27 @@ const WorkoutForm: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Form for specific workout type
-  const [swimWorkout, setSwimWorkout] = useState<typeof DEFAULT_SWIM>(DEFAULT_SWIM);
-  const [swimResponse, setSwimResponse] = useState<SwimResponse | null>(null);
+  const [workout, setWorkout] = useState<typeof DEFAULT_WORKOUT>(DEFAULT_WORKOUT);
+  const [workoutResponse, setWorkoutResponse] = useState<WorkoutResponse | null>(null);
 
   const handleReset = useCallback(() => {
     setShowAdditionalInfo(false);
     setShowAnyInjuries(false);
-    setRoutineName(DEFAULT_SWIM_NAME);
-    setSwimResponse(null);
+    setWorkoutName(DEFAULT_WORKOUT_NAME);
+    setWorkoutResponse(null);
 
-    setSwimWorkout(DEFAULT_SWIM);
+    setWorkout(DEFAULT_WORKOUT);
   }, []);
-  
-  const handleArrayFieldChange = useCallback((field: keyof typeof swimWorkout) => (event: SelectChangeEvent<string[]>) => {
-    setSwimWorkout((prevState) => ({
+
+  const handleArraySingleFieldChange = useCallback((field: keyof typeof workout) => (event: SelectChangeEvent<string | string[] | number>) => {
+    setWorkout((prevState) => ({
       ...prevState,
-      [field]: event.target.value as string[],
+      [field]: event.target.value,
     }));
   }, []);
 
-  const handleChange = useCallback((field: keyof typeof DEFAULT_SWIM, value: string | number | number[] | boolean) => {
-    setSwimWorkout((prevState) => ({
+  const handleChange = useCallback((field: keyof typeof DEFAULT_WORKOUT, value: string | number | number[] | boolean) => {
+    setWorkout((prevState) => ({
       ...prevState,
       [field]: value,
     }));
@@ -89,10 +87,10 @@ const WorkoutForm: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(swimWorkout),
+        body: JSON.stringify(workout),
       });
       const data = await response.json();
-      setSwimResponse(data);
+      setWorkoutResponse(data);
     } catch (error) {
       console.error('Error generating swim routine:', error);
       setError((error as unknown as { message: string }).message);
@@ -100,7 +98,7 @@ const WorkoutForm: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [swimWorkout]);
+  }, [workout]);
 
   const handleSubmitClick = useCallback(() => {
     if(loading) {
@@ -118,22 +116,22 @@ const WorkoutForm: React.FC = () => {
       return 'loading';
     } else if(hasError) {
       return 'error';
-    } else if(swimResponse) {
-      return 'swimRoutine';
+    } else if(workoutResponse) {
+      return 'workout';
     } else if (hasChanged) {
       return 'summary';
     } else {
       return;
     }
-  }, [hasChanged, hasError, loading, swimResponse]);
+  }, [hasChanged, hasError, loading, workoutResponse]);
 
   useEffect(() => {
-    if(!isEqual(swimWorkout, DEFAULT_SWIM)) {
+    if(!isEqual(workout, DEFAULT_WORKOUT)) {
       setHasChanged(true);
     } else {
       setHasChanged(false);
     }
-  }, [swimWorkout]);
+  }, [workout]);
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
@@ -142,23 +140,23 @@ const WorkoutForm: React.FC = () => {
       </Typography>
       <FormControl fullWidth margin="dense">
         <TextField
-          value={routineName}
+          value={workoutName}
           size='small'
-          onChange={(e) => setRoutineName(e.target.value)}
+          onChange={(e) => setWorkoutName(e.target.value)}
         />
       </FormControl>
       <FormControl fullWidth margin="dense" size="small">
-        <InputLabel>Swimming Strokes</InputLabel>
+        <Typography>Swimming Strokes</Typography>
         <Select
           multiple
-          value={swimWorkout.swimStrokes}
-          onChange={handleArrayFieldChange('swimStrokes')}
-          renderValue={(selected) => (selected as string[]).join(', ')}
-        >
+          value={workout.swimStrokes}
+          onChange={handleArraySingleFieldChange('swimStrokes')}
+          displayEmpty
+          renderValue={(selected) => (selected.length === 0 ? 'All' : (selected as string[]).join(', '))}>
           {swimStrokes.map((swim) => (
             <MenuItem key={swim} value={swim}>
               <ListItemText primary={swim} />
-              {swimWorkout.swimStrokes.indexOf(swim) > -1 && (
+              {workout.swimStrokes.indexOf(swim) > -1 && (
                 <ListItemIcon>
                   <FaCheck style={{ color: theme === 'dark' ? 'lightgreen' : 'green' }} />
                 </ListItemIcon>
@@ -168,29 +166,23 @@ const WorkoutForm: React.FC = () => {
         </Select>
       </FormControl>
       <FormControl fullWidth margin="dense" size="small">
-        <InputLabel>Swimming Styles</InputLabel>
+        <Typography>Swimming Strokes</Typography>
         <Select
-          multiple
-          value={swimWorkout.swimStyles}
-          onChange={handleArrayFieldChange('swimStyles')}
-          renderValue={(selected) => (selected as string[]).join(', ')}
+          value={workout.swimStyle}
+          onChange={handleArraySingleFieldChange('swimStyle')}
+          renderValue={(selected) => (selected)}
         >
           {swimStyles.map((swim) => (
             <MenuItem key={swim} value={swim}>
               <ListItemText primary={swim} />
-              {swimWorkout.swimStyles.indexOf(swim) > -1 && (
-                <ListItemIcon>
-                  <FaCheck style={{ color: theme === 'dark' ? 'lightgreen' : 'green' }} />
-                </ListItemIcon>
-              )}
             </MenuItem>
           ))}
         </Select>
       </FormControl>
       <FormControl fullWidth margin="normal">
-        <Typography gutterBottom>Intensity</Typography>
+        <Typography>Intensity</Typography>
         <Slider
-          value={swimWorkout.intensity}
+          value={workout.intensity}
           onChange={(_event, newValue) => handleChange('intensity', newValue)}
           aria-labelledby="intensity-slider"
           valueLabelDisplay="auto"
@@ -222,10 +214,10 @@ const WorkoutForm: React.FC = () => {
             label="Injuries..."
             multiline
             rows={2}
-            value={swimWorkout.injuries}
+            value={workout.injuries}
             onChange={(e) => handleChange('injuries', e.target.value)}
             inputProps={{ maxLength: 50 }}
-            helperText={`${swimWorkout.injuries.length}/250`}
+            helperText={`${workout.injuries.length}/250`}
           />
         </FormControl>
       )}
@@ -235,10 +227,10 @@ const WorkoutForm: React.FC = () => {
             label="Additional Info"
             multiline
             rows={2}
-            value={swimWorkout.additionalInfo}
+            value={workout.additionalInfo}
             onChange={(e) => handleChange('additionalInfo', e.target.value)}
             inputProps={{ maxLength: 50 }}
-            helperText={`${swimWorkout.additionalInfo.length}/250`}
+            helperText={`${workout.additionalInfo.length}/250`}
           />
         </FormControl>
       )}
@@ -267,59 +259,6 @@ const WorkoutForm: React.FC = () => {
         </Box>
       )}
 
-      {/* Workout Plan */}
-      {getCurrentStatus() === 'swimRoutine' && swimResponse && (
-        <Box sx={{ mt: 4, mb: 8 }}>
-          <Card>
-            <CardContent>
-            <Box sx={{ mb: 2}}>
-              <Typography variant="h5" gutterBottom>
-                {routineName}
-              </Typography>
-              <Typography variant="subtitle1" gutterBottom>
-                Total Distance: {swimResponse.totalDistance} meters | Estimated Time: {swimResponse.estimatedTimeMinutes} minutes
-              </Typography>
-              <Typography variant= "body2" gutterBottom>
-                {swimResponse.workoutDescription}
-              </Typography>
-            </Box>
-              <Grid container spacing={2}>
-                {/* Warmup */}
-                <Grid size={{ xs: 12 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Warmup
-                  </Typography>
-                  <Divider />
-                </Grid>
-                {swimResponse.warmup.map((swim, index) => (
-                  SwimSegmentList({ swim, index })
-                ))}
-
-                <Grid size={{ xs: 12 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Main
-                  </Typography>
-                  <Divider />
-                </Grid>
-                {swimResponse.main.map((swim, index) => (
-                  SwimSegmentList({ swim, index })
-                ))}
-
-                <Grid size={{ xs: 12 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Cooldown
-                  </Typography>
-                  <Divider />
-                </Grid>
-                {swimResponse.cooldown.map((swim, index) => (
-                  SwimSegmentList({ swim, index })
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
-
       {/* Summary */}
       {getCurrentStatus() === 'summary' &&(
         <Box sx={{ mt: 4 }}>
@@ -332,27 +271,80 @@ const WorkoutForm: React.FC = () => {
                 <Grid size={{ xs: 12 }}>
                   <Box display="flex" alignItems="center">
                     <FaDumbbell style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                    <Typography>Swim Strokes: {swimWorkout.swimStrokes.join(', ') || 'None selected'}</Typography>
+                    <Typography>Swim Strokes: {workout.swimStrokes.join(', ') || 'None selected'}</Typography>
                   </Box>
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                   <Box display="flex" alignItems="center">
                     <FaDumbbell style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                    <Typography>Swim Styles: {swimWorkout.swimStyles.join(', ') || 'None selected'}</Typography>
+                    <Typography>Swim Styles: {workout.swimStyle}</Typography>
                   </Box>
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                   <Box display="flex" alignItems="center">
                     <FaHeartbeat style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                    <Typography>Intensity: {swimWorkout.intensity}</Typography>
+                    <Typography>Intensity: {workout.intensity}</Typography>
                   </Box>
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                   <Box display="flex" alignItems="center">
                     <FaClock style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                    <Typography>Duration: {swimWorkout.duration} minutes</Typography>
+                    <Typography>Duration: {workout.duration} minutes</Typography>
                   </Box>
                 </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+
+      {/* Workout Plan */}
+      {getCurrentStatus() === 'workout' && workoutResponse && (
+        <Box sx={{ mt: 4, mb: 8 }}>
+          <Card>
+            <CardContent>
+            <Box sx={{ mb: 2}}>
+              <Typography variant="h5" gutterBottom>
+                {workoutName}
+              </Typography>
+              <Typography variant="subtitle1" gutterBottom>
+                Total Distance: {workoutResponse.totalDistance} meters | Estimated Time: {workoutResponse.estimatedTimeMinutes} minutes
+              </Typography>
+              <Typography variant= "body1" gutterBottom>
+                {workoutResponse.workoutDescription}
+              </Typography>
+            </Box>
+              <Grid container spacing={2}>
+                {/* Warmup */}
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Warmup
+                  </Typography>
+                  <Divider />
+                </Grid>
+                {workoutResponse.warmup.map((swim, index) => (
+                  SwimSegmentList({ swim, index })
+                ))}
+
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Main
+                  </Typography>
+                  <Divider />
+                </Grid>
+                {workoutResponse.main.map((swim, index) => (
+                  SwimSegmentList({ swim, index })
+                ))}
+
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Cooldown
+                  </Typography>
+                  <Divider />
+                </Grid>
+                {workoutResponse.cooldown.map((swim, index) => (
+                  SwimSegmentList({ swim, index })
+                ))}
               </Grid>
             </CardContent>
           </Card>
