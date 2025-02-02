@@ -3,57 +3,68 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Box, Button, FormControl, InputLabel, ListItemIcon, ListItemText, MenuItem, Select, Slider, Typography, SelectChangeEvent, Card, CardContent, Checkbox, FormControlLabel, FormGroup, TextField, Alert, Snackbar, CircularProgress } from '@mui/material';
 import Grid from '@mui/material/Grid2';
-import { WorkoutResponse } from '@/app/api/generateWorkout/route';
 import { VscDash } from "react-icons/vsc";
-import { FaCheck, FaClock, FaDumbbell, FaHeartbeat, FaWeightHanging } from 'react-icons/fa';
+import { FaCheck, FaDumbbell, FaHeartbeat } from 'react-icons/fa';
 import { useTheme } from '@/context/ThemeContext';
 import isEqual from 'lodash/isEqual';
+// import { stretchResponse, SwimSegment } from '@/app/api/generateSwim/route';
+import { Divider } from '@mui/material';
+import { StretchResponse } from '../api/generateStretch/route';
 
-const muscleGroupsOptions = ['Back', 'Chest', 'Shoulders', 'Triceps', 'Biceps', 'Abs', 'Legs', 'Cardio'];
+const stretchTypes = ['Static', 'Dynamic', 'Active', 'Passive'];
+const stretchAreas = ['Neck/Shoulders', 'Arms/Wrists', 'Chest/Upperback', 'Core/Lowerback', 'Hips/Glutes', 'Quads/Hams', 'Calves/Ankles'];
 
-const DEFAULT_FORM = {
-  muscleGroups: [] as string[],
-  intensity: 7,
-  bodyweight: false,
-  rest: false,
-  workoutStyle: 'crossfit',
-  duration: 5,
+const DEFAULT_STRETCHING = {
+  stretchType: '',
+  stretchAreas: [] as string[],
+  duration: 10, // Duration in minutes
   additionalInfo: '',
   injuries: '',
 };
 
-const DEFAULT_WORKOUT_NAME = 'My Routine';
+const DEFAULT_STRETCH_NAME = 'My Stretch Routine';
 
 const WorkoutForm: React.FC = () => {
+
+  // Consistent interface for generating workout plans
   const { theme } = useTheme();
-  const [workoutState, setWorkoutState] = useState<typeof DEFAULT_FORM>(DEFAULT_FORM);
   const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
   const [showAnyInjuries, setShowAnyInjuries] = useState(false);
-  const [routineName, setRoutineName] = useState(DEFAULT_WORKOUT_NAME);
+  const [routineName, setRoutineName] = useState(DEFAULT_STRETCH_NAME);
   const [hasChanged, setHasChanged] = useState(false);
   const [showSnackbar, setShowSnackbar] = useState(false);
-  const [workoutResponse, setWorkoutResponse] = useState<WorkoutResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Form for specific workout type
+  const [stretchWorkout, setStretchWorkout] = useState<typeof DEFAULT_STRETCHING>(DEFAULT_STRETCHING);
+  const [stretchResponse, setStretchResponse] = useState<StretchResponse | null>(null);
+
   const handleReset = useCallback(() => {
-    setWorkoutState(DEFAULT_FORM);
     setShowAdditionalInfo(false);
     setShowAnyInjuries(false);
-    setRoutineName(DEFAULT_WORKOUT_NAME);
-    setWorkoutResponse(null);
+    setRoutineName(DEFAULT_STRETCH_NAME);
+    setStretchResponse(null);
+    setStretchWorkout(DEFAULT_STRETCHING);
   }, []);
-
-  const handleMuscleGroupsChange = useCallback((event: SelectChangeEvent<string[]>) => {
-    setWorkoutState((prevState) => ({
+  
+  const handleArrayFieldChange = useCallback((field: keyof typeof stretchWorkout) => (event: SelectChangeEvent<string[]>) => {
+    setStretchWorkout((prevState) => ({
       ...prevState,
-      muscleGroups: event.target.value as string[],
+      [field]: event.target.value as string[],
     }));
   }, []);
 
-  const handleChange = useCallback((field: keyof typeof DEFAULT_FORM, value: string | number | number[] | boolean) => {
-    setWorkoutState((prevState) => ({
+  const handleArraySingleFieldChange = useCallback((field: keyof typeof stretchWorkout) => (event: SelectChangeEvent<string>) => {
+    setStretchWorkout((prevState) => ({
+      ...prevState,
+      [field]: event.target.value,
+    }));
+  }, []);
+
+  const handleChange = useCallback((field: keyof typeof DEFAULT_STRETCHING, value: string | number | number[] | boolean) => {
+    setStretchWorkout((prevState) => ({
       ...prevState,
       [field]: value,
     }));
@@ -62,23 +73,26 @@ const WorkoutForm: React.FC = () => {
   const handleSubmit = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/generateWorkout', {
+      console.log('stretchWorkout', stretchWorkout);
+      const response = await fetch('/api/generateStretch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(workoutState),
+        body: JSON.stringify(stretchWorkout),
       });
+      console.log('response', response);
       const data = await response.json();
-      setWorkoutResponse(data);
+      setStretchResponse(data);
+      console.log('DATA', data);
     } catch (error) {
-      console.error('Error generating workout plan:', error);
+      console.error('Error generating stretch routine:', error);
       setError((error as unknown as { message: string }).message);
       setHasError(true);
     } finally {
       setLoading(false);
     }
-  }, [workoutState]);
+  }, [stretchWorkout]);
 
   const handleSubmitClick = useCallback(() => {
     if(loading) {
@@ -96,27 +110,29 @@ const WorkoutForm: React.FC = () => {
       return 'loading';
     } else if(hasError) {
       return 'error';
-    } else if(workoutResponse) {
-      return 'workout';
+    } else if(stretchResponse) {
+      return 'stretchRoutine';
     } else if (hasChanged) {
       return 'summary';
     } else {
       return;
     }
-  }, [hasChanged, hasError, loading, workoutResponse]);
+  }, [hasChanged, hasError, loading, stretchResponse]);
+
+  console.log('Get Current Status', getCurrentStatus());
 
   useEffect(() => {
-    if(!isEqual(workoutState, DEFAULT_FORM)) {
+    if(!isEqual(stretchWorkout, DEFAULT_STRETCHING)) {
       setHasChanged(true);
     } else {
       setHasChanged(false);
     }
-  }, [workoutState]);
+  }, [stretchWorkout]);
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mt: 4 }}>
       <Typography variant="h6">
-        Create Streching Routine
+        Create Stretch Routine
       </Typography>
       <FormControl fullWidth margin="dense">
         <TextField
@@ -126,17 +142,30 @@ const WorkoutForm: React.FC = () => {
         />
       </FormControl>
       <FormControl fullWidth margin="dense" size="small">
-        <InputLabel>Muscle Groups</InputLabel>
+        <InputLabel>Stretch Style</InputLabel>
+        <Select
+          value={stretchWorkout.stretchType}
+          onChange={handleArraySingleFieldChange('stretchType')}
+          renderValue={(selected) => selected}>
+          {stretchTypes.map((stretch) => (
+            <MenuItem key={stretch} value={stretch}>
+              <ListItemText primary={stretch} />
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormControl fullWidth margin="dense" size="small">
+        <InputLabel>Stretch Areas</InputLabel>
         <Select
           multiple
-          value={workoutState.muscleGroups}
-          onChange={handleMuscleGroupsChange}
+          value={stretchWorkout.stretchAreas}
+          onChange={handleArrayFieldChange('stretchAreas')}
           renderValue={(selected) => (selected as string[]).join(', ')}
         >
-          {muscleGroupsOptions.map((group) => (
-            <MenuItem key={group} value={group}>
-              <ListItemText primary={group} />
-              {workoutState.muscleGroups.indexOf(group) > -1 && (
+          {stretchAreas.map((stretch) => (
+            <MenuItem key={stretch} value={stretch}>
+              <ListItemText primary={stretch} />
+              {stretchWorkout.stretchAreas.indexOf(stretch) > -1 && (
                 <ListItemIcon>
                   <FaCheck style={{ color: theme === 'dark' ? 'lightgreen' : 'green' }} />
                 </ListItemIcon>
@@ -146,44 +175,20 @@ const WorkoutForm: React.FC = () => {
         </Select>
       </FormControl>
       <FormControl fullWidth margin="normal">
-        <Typography gutterBottom>Intensity</Typography>
+        <Typography gutterBottom>Duration</Typography>
         <Slider
-          value={workoutState.intensity}
-          onChange={(_event, newValue) => handleChange('intensity', newValue)}
-          aria-labelledby="intensity-slider"
-          valueLabelDisplay="auto"
-          step={1}
-          marks
-          min={1}
-          max={10}
-        />
-      </FormControl>
-      {/* <FormControl fullWidth margin="normal">
-        <Typography gutterBottom>Duration (minutes)</Typography>
-        <Slider
-          value={workoutState.duration}
+          value={stretchWorkout.duration}
           onChange={(_event, newValue) => handleChange('duration', newValue)}
           aria-labelledby="duration-slider"
           valueLabelDisplay="auto"
           step={1}
+          marks
           min={1}
-          max={90}
+          max={60}
         />
-      </FormControl> */}
+      </FormControl>
       <FormGroup>
-      <Grid container spacing={2} justifyContent="space-between" alignItems="center">
-        <Grid size={{ sm: 4, xs: 6 }}>
-          <FormControlLabel
-            control={<Checkbox checked={workoutState.bodyweight} onChange={(e) => handleChange('bodyweight', e.target.checked)} />}
-            label="Strictly Bodyweight"
-          />
-        </Grid>
-        <Grid size={{ sm: 4, xs: 6  }}>
-          <FormControlLabel
-            control={<Checkbox checked={workoutState.rest} onChange={(e) => handleChange('rest', e.target.checked)} />}
-            label="Rest?"
-          />
-        </Grid>
+      <Grid container spacing={2} justifyContent="space-between" alignItems="start">
         <Grid size={{ sm: 4, xs: 6  }}>
           <FormControlLabel
             control={<Checkbox checked={showAnyInjuries} onChange={(e) => setShowAnyInjuries(e.target.checked)} />}
@@ -204,10 +209,10 @@ const WorkoutForm: React.FC = () => {
             label="Injuries..."
             multiline
             rows={2}
-            value={workoutState.injuries}
+            value={stretchWorkout.injuries}
             onChange={(e) => handleChange('injuries', e.target.value)}
             inputProps={{ maxLength: 50 }}
-            helperText={`${workoutState.injuries.length}/250`}
+            helperText={`${stretchWorkout.injuries.length}/250`}
           />
         </FormControl>
       )}
@@ -217,10 +222,10 @@ const WorkoutForm: React.FC = () => {
             label="Additional Info"
             multiline
             rows={2}
-            value={workoutState.additionalInfo}
+            value={stretchWorkout.additionalInfo}
             onChange={(e) => handleChange('additionalInfo', e.target.value)}
             inputProps={{ maxLength: 50 }}
-            helperText={`${workoutState.additionalInfo.length}/250`}
+            helperText={`${stretchWorkout.additionalInfo.length}/250`}
           />
         </FormControl>
       )}
@@ -250,33 +255,32 @@ const WorkoutForm: React.FC = () => {
       )}
 
       {/* Workout Plan */}
-      {getCurrentStatus() === 'workout' && workoutResponse && (
+      {getCurrentStatus() === 'stretchRoutine' && stretchResponse && (
         <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            {routineName}
-          </Typography>
-          <Card>
-            <CardContent>
-              <Grid container spacing={2}>
-                {workoutResponse.restAmount !== 0 && (
-                  <Grid size={{ xs: 12 }}>
-                    <Box display="flex" alignItems="center">
-                      <Typography>Rest Between Sets: {workoutResponse.restAmount} seconds</Typography>
-                    </Box>
-                  </Grid>
-                )}
-                {workoutResponse.circuit.map((exercise, index) => (
-                  <Grid size={{ xs: 12 }} key={index}>
-                    <Box display="flex" alignItems="center">
-                      <VscDash style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                      <Typography>{exercise.exercise} - {exercise.reps} reps</Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
-        </Box>
+        <Card>
+          <CardContent>
+            <Box sx={{ mb: 2}}>
+              <Typography variant="h6" gutterBottom>
+                {routineName} - Total Estimated {stretchResponse.totalEstimatedDurationMinutes} Minutes
+              </Typography>
+              <Typography variant= "subtitle1" gutterBottom>
+                {stretchResponse.description}
+              </Typography>
+            </Box>
+            <Divider />
+            <Grid container spacing={2} sx={{ mt: 2 }}>
+              {stretchResponse.stretches.map((stretch, index) => (
+                <Grid size={{ xs: 12 }} key={index}>
+                  <Box display="flex" alignItems="center">
+                    <VscDash style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
+                    <Typography>{stretch.stretchName} {stretch.numReps ?? 0 > 1 ? `- ${stretch.numReps} reps` : ''} for {stretch.durationInSeconds} seconds - {stretch.description}</Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </CardContent>
+        </Card>
+      </Box>
       )}
 
       {/* Summary */}
@@ -291,25 +295,19 @@ const WorkoutForm: React.FC = () => {
                 <Grid size={{ xs: 12 }}>
                   <Box display="flex" alignItems="center">
                     <FaDumbbell style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                    <Typography>Muscle Groups: {workoutState.muscleGroups.join(', ') || 'None selected'}</Typography>
+                    <Typography>Stretch Type: {stretchWorkout.stretchType}</Typography>
+                  </Box>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Box display="flex" alignItems="center">
+                    <FaDumbbell style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
+                    <Typography>Stretch Areas: {stretchWorkout.stretchAreas.join(', ') || 'None selected'}</Typography>
                   </Box>
                 </Grid>
                 <Grid size={{ xs: 12 }}>
                   <Box display="flex" alignItems="center">
                     <FaHeartbeat style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                    <Typography>Intensity: {workoutState.intensity}</Typography>
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Box display="flex" alignItems="center">
-                    <FaWeightHanging style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                    <Typography>Bodyweight: {workoutState.bodyweight ? 'Yes' : 'No'}</Typography>
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Box display="flex" alignItems="center">
-                    <FaClock style={{ marginRight: 8, fontSize: 24, flexShrink: 0 }} />
-                    <Typography>Duration: {workoutState.duration} minutes</Typography>
+                    <Typography>Duration: {stretchWorkout.duration}</Typography>
                   </Box>
                 </Grid>
               </Grid>
